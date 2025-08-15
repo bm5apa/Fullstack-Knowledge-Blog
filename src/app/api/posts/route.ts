@@ -1,4 +1,4 @@
-import { NextResponse, NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -13,11 +13,16 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
+  if (!session?.user?.id)
+    return new NextResponse("Unauthorized", { status: 401 });
 
   const { title, content, published = true } = await req.json();
+  if (!title || !content) {
+    return new NextResponse("title & content required", { status: 400 });
+  }
+
   const created = await prisma.post.create({
-    data: { title, content, published, authorId: session.user.id! },
+    data: { title, content, published, authorId: session.user.id },
   });
   return NextResponse.json(created, { status: 201 });
 }

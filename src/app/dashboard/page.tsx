@@ -16,24 +16,27 @@ export default function Dashboard() {
       setTitle("");
       setContent("");
       alert("Created!");
-    } else alert(await res.text());
+    } else alert(`Error: ${await res.text()}`);
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
-      <input
-        className="border p-2 w-full"
-        placeholder="Title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <textarea
-        className="border p-2 w-full"
-        placeholder="Content"
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-      />
-      <button className="border px-3 py-2 rounded">Publish</button>
-    </form>
+    <section className="space-y-3">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <form onSubmit={onSubmit} className="space-y-3">
+        <input
+          className="border p-2 w-full"
+          placeholder="Title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <textarea
+          className="border p-2 w-full"
+          placeholder="Content"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+        />
+        <button className="border px-3 py-2 rounded">Publish</button>
+      </form>
+    </section>
   );
 }
