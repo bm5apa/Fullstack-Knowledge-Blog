@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { postPatchInput } from "@/lib/validation";
+
+function isAdmin(session: any) {
+  return session?.user?.role === "ADMIN";
+}
 
 export async function GET(
   _: NextRequest,
@@ -21,11 +26,28 @@ export async function PATCH(
   if (!session?.user?.id)
     return new NextResponse("Unauthorized", { status: 401 });
 
-  const body = await req.json();
-  const updated = await prisma.post.update({
-    where: { id: params.id },
-    data: body,
+  const json = await req.json();
+  const parsed = postPatchInput.safeParse(json);
+  if (!parsed.success)
+    return NextResponse.json(parsed.error.flatten(), { status: 400 });
+
+  const userId = session.user.id as string;
+
+  if (isAdmin(session)) {
+    const updated = await prisma.post.update({
+      where: { id: params.id },
+      data: parsed.data,
+    });
+    return NextResponse.json(updated);
+  }
+
+  const { count } = await prisma.post.updateMany({
+    where: { id: params.id, authorId: userId },
+    data: parsed.data,
   });
+  if (count === 0) return new NextResponse("Forbidden", { status: 403 });
+
+  const updated = await prisma.post.findUnique({ where: { id: params.id } });
   return NextResponse.json(updated);
 }
 
@@ -37,6 +59,15 @@ export async function DELETE(
   if (!session?.user?.id)
     return new NextResponse("Unauthorized", { status: 401 });
 
-  await prisma.post.delete({ where: { id: params.id } });
+  if (isAdmin(session)) {
+    await prisma.post.delete({ where: { id: params.id } });
+    return new NextResponse(null, { status: 204 });
+  }
+
+  const { count } = await prisma.post.deleteMany({
+    where: { id: params.id, authorId: session.user.id as string },
+  });
+  if (count === 0) return new NextResponse("Forbidden", { status: 403 });
+
   return new NextResponse(null, { status: 204 });
 }
