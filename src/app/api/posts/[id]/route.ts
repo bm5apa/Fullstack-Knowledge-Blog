@@ -1,71 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
+import { getServerSession, type Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { postPatchInput } from "@/lib/validation";
 
-function isAdmin(session: any) {
+// Next 15：路由 context.params 是 Promise，要 await
+type ParamsPromise = Promise<{ id: string }>;
+type AppSession = Session | null;
+
+function isAdmin(session: AppSession): boolean {
   return session?.user?.role === "ADMIN";
 }
 
-export async function GET(
-  _: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const post = await prisma.post.findUnique({ where: { id: params.id } });
+function getUserId(session: AppSession): string | null {
+  return session?.user?.id ?? null;
+}
+
+// 安全：只允許可直接更新的欄位（不要把 tags 直接塞進 Prisma relation）
+// 這樣就不會觸發 data.tags 型別不符
+function pickUpdatableFields(input: unknown) {
+  const parsed = postPatchInput.safeParse(input);
+  if (!parsed.success)
+    return { ok: false as const, error: parsed.error.flatten() };
+
+  const { title, content, published } = parsed.data; // 忽略 tags
+  return { ok: true as const, data: { title, content, published } };
+}
+
+export async function GET(_: NextRequest, ctx: { params: ParamsPromise }) {
+  const { id } = await ctx.params;
+  const post = await prisma.post.findUnique({ where: { id } });
   return post
     ? NextResponse.json(post)
     : new NextResponse("Not Found", { status: 404 });
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, ctx: { params: ParamsPromise }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id)
-    return new NextResponse("Unauthorized", { status: 401 });
+  const uid = getUserId(session);
+  if (!uid) return new NextResponse("Unauthorized", { status: 401 });
 
-  const json = await req.json();
-  const parsed = postPatchInput.safeParse(json);
-  if (!parsed.success)
-    return NextResponse.json(parsed.error.flatten(), { status: 400 });
+  const { id } = await ctx.params;
 
-  const userId = session.user.id as string;
+  const pick = pickUpdatableFields(await req.json());
+  if (!pick.ok) return NextResponse.json(pick.error, { status: 400 });
 
   if (isAdmin(session)) {
     const updated = await prisma.post.update({
-      where: { id: params.id },
-      data: parsed.data,
+      where: { id },
+      data: pick.data,
     });
     return NextResponse.json(updated);
   }
 
   const { count } = await prisma.post.updateMany({
-    where: { id: params.id, authorId: userId },
-    data: parsed.data,
+    where: { id, authorId: uid },
+    data: pick.data,
   });
   if (count === 0) return new NextResponse("Forbidden", { status: 403 });
 
-  const updated = await prisma.post.findUnique({ where: { id: params.id } });
+  const updated = await prisma.post.findUnique({ where: { id } });
   return NextResponse.json(updated);
 }
 
-export async function DELETE(
-  _: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(_: NextRequest, ctx: { params: ParamsPromise }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id)
-    return new NextResponse("Unauthorized", { status: 401 });
+  const uid = getUserId(session);
+  if (!uid) return new NextResponse("Unauthorized", { status: 401 });
+
+  const { id } = await ctx.params;
 
   if (isAdmin(session)) {
-    await prisma.post.delete({ where: { id: params.id } });
+    await prisma.post.delete({ where: { id } });
     return new NextResponse(null, { status: 204 });
   }
 
   const { count } = await prisma.post.deleteMany({
-    where: { id: params.id, authorId: session.user.id as string },
+    where: { id, authorId: uid },
   });
   if (count === 0) return new NextResponse("Forbidden", { status: 403 });
 
