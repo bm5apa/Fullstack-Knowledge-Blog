@@ -5,10 +5,9 @@ export async function GET() {
   try {
     await prisma.user.count();
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, message: e?.message ?? "db error" },
-      { status: 500 }
-    );
+  } catch (e: unknown) {
+    const message =
+      e instanceof Error ? e.message : typeof e === "string" ? e : "db error";
+    return NextResponse.json({ ok: false, message }, { status: 500 });
   }
 }
