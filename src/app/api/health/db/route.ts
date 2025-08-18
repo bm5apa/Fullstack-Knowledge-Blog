@@ -6,8 +6,7 @@ export async function GET() {
     await prisma.user.count();
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
-    const message =
-      e instanceof Error ? e.message : typeof e === "string" ? e : "db error";
+    const message = e instanceof Error ? e.message : String(e ?? "db error");
     return NextResponse.json({ ok: false, message }, { status: 500 });
   }
 }

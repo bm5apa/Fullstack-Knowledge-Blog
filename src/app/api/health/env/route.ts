@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 export async function GET() {
   const checks = {
     DATABASE_URL: !!process.env.DATABASE_URL,
