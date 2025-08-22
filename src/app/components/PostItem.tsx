@@ -1,11 +1,16 @@
-// src/components/PostItem.tsx
+// src/app/components/PostItem.tsx
 "use client";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 type Tag = { id: string; name: string };
-type User = { id: string; name?: string | null; image?: string | null };
+type User = {
+  id: string;
+  name?: string | null;
+  image?: string | null;
+  role?: "ADMIN" | "USER";
+};
 export type Post = {
   id: string;
   title?: string | null;
@@ -17,35 +22,19 @@ export type Post = {
   tags?: { tag: Tag }[];
 };
 
-// ✅ 在模組層先建立固定的日期格式器（語系＋時區＋24h）
-// 這樣 SSR 與 Client 會得到相同字串，避免 hydration mismatch
-const dateFmt = new Intl.DateTimeFormat("zh-TW", {
-  timeZone: "Asia/Taipei",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: false,
-});
-
-export default function PostItem({ post }: { post?: Post }) {
+export default function PostItem({ post }: { post: Post }) {
+  const router = useRouter();
   const { data } = useSession();
-  const me = (data?.user as any) || null;
+  const me = (data?.user ?? null) as User | null;
 
-  if (!post) return null;
-
-  const isOwner = me?.id && me.id === post.authorId;
+  const isOwner = Boolean(me?.id && me.id === post.authorId);
   const isAdmin = me?.role === "ADMIN";
   const canEdit = isOwner || isAdmin;
-  const router = useRouter();
 
   async function onDelete() {
     if (!confirm("確認刪除這篇文章？")) return;
     const res = await fetch(`/api/posts/${post.id}`, { method: "DELETE" });
     if (res.status === 204) {
-      // 重新抓取伺服器資料，列表會立刻更新
       router.refresh();
       return;
     }
@@ -60,14 +49,13 @@ export default function PostItem({ post }: { post?: Post }) {
       ? new Date(post.createdAt)
       : post.createdAt;
 
-  // ✅ 用固定格式器輸出文字，避免 toLocaleString() 差異
-  const createdText = created ? dateFmt.format(created) : "";
-
   return (
     <article className="rounded-lg border p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">{title}</h3>
-        <div className="text-xs text-gray-500">{createdText}</div>
+        <div className="text-xs text-gray-500">
+          {created ? created.toLocaleString() : ""}
+        </div>
       </div>
 
       <div className="mt-2 whitespace-pre-wrap text-sm text-gray-700">

@@ -1,34 +1,28 @@
+// src/app/components/NavBar.tsx
 "use client";
 
 import Link from "next/link";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { signIn, signOut, useSession } from "next-auth/react";
 
 export default function NavBar() {
   const { data } = useSession();
-  const user = data?.user as (typeof data)["user"] & {
-    id?: string;
-    role?: string;
-  };
+  const user = data?.user ?? null; // <— 簡單保險
 
   return (
-    <nav className="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
-      <div className="mx-auto flex max-w-3xl items-center justify-between p-3">
+    <nav className="border-b bg-white">
+      <div className="mx-auto max-w-3xl px-4 py-3 flex items-center justify-between">
         <Link href="/" className="font-semibold">
           Knowledge Blog
         </Link>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex items-center gap-3">
           {user ? (
             <>
-              <span className="text-gray-500">Hi, {user.name ?? "User"}</span>
-              <Link
-                href="/new"
-                className="rounded bg-black px-3 py-1.5 text-white hover:bg-gray-800"
-              >
-                新文章
-              </Link>
+              <span className="text-sm text-gray-600">
+                Hi, {user.name ?? "User"}
+              </span>
               <button
                 onClick={() => signOut()}
-                className="rounded border px-3 py-1.5 hover:bg-gray-50"
+                className="rounded border px-2 py-1 text-sm hover:bg-gray-50"
               >
                 登出
               </button>
@@ -36,9 +30,9 @@ export default function NavBar() {
           ) : (
             <button
               onClick={() => signIn("github")}
-              className="rounded bg-black px-3 py-1.5 text-white hover:bg-gray-800"
+              className="rounded border px-2 py-1 text-sm hover:bg-gray-50"
             >
-              用 GitHub 登入
+              GitHub 登入
             </button>
           )}
         </div>
