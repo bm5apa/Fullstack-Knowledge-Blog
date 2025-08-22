@@ -84,34 +84,34 @@ Visit http://localhost:3000
 
 ## ✅ Testing
 
-- Unit / Integration tests:
+1. Unit / Integration tests:
 
 ```bash
 yarn test
 ```
 
-- E2E tests with Playwright (optional):
+2. E2E tests with Playwright (optional):
 
 ```bash
 yarn playwright test
 ```
 
-- Manual sanity checks:
+3. Manual sanity checks:
 
-* Sign in via /api/auth/signin with GitHub OAuth
-* Create a post with tags → confirm it shows in the list
-* Use a second account to test PATCH / DELETE → should return 403 if not the author
-* Sign out and sign back in → session should persist correctly
+- Sign in via /api/auth/signin with GitHub OAuth
+- Create a post with tags → confirm it shows in the list
+- Use a second account to test PATCH / DELETE → should return 403 if not the author
+- Sign out and sign back in → session should persist correctly
 
 ## ☁️ Deployment
 
-- Deployed on Vercel: push to main → auto build & deploy
+1. Deployed on Vercel: push to main → auto build & deploy
 
-- Ensure the following env vars are set in Vercel Dashboard:
+2. Ensure the following env vars are set in Vercel Dashboard:
 
-* DATABASE_URL
-* DIRECT_URL
-* NEXTAUTH_SECRET
-* NEXTAUTH_URL
-* GITHUB_ID / GITHUB_SECRET
-* NEXT_PUBLIC_SITE_URL
+- DATABASE_URL
+- DIRECT_URL
+- NEXTAUTH_SECRET
+- NEXTAUTH_URL
+- GITHUB_ID / GITHUB_SECRET
+- NEXT_PUBLIC_SITE_URL
