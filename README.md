@@ -81,3 +81,37 @@ NEXT_PUBLIC_SITE_URL="https://your-vercel-app.vercel.app"
 ```
 
 Visit http://localhost:3000
+
+## ✅ Testing
+
+- Unit / Integration tests:
+
+```bash
+yarn test
+```
+
+- E2E tests with Playwright (optional):
+
+```bash
+yarn playwright test
+```
+
+- Manual sanity checks:
+
+* Sign in via /api/auth/signin with GitHub OAuth
+* Create a post with tags → confirm it shows in the list
+* Use a second account to test PATCH / DELETE → should return 403 if not the author
+* Sign out and sign back in → session should persist correctly
+
+## ☁️ Deployment
+
+- Deployed on Vercel: push to main → auto build & deploy
+
+- Ensure the following env vars are set in Vercel Dashboard:
+
+* DATABASE_URL
+* DIRECT_URL
+* NEXTAUTH_SECRET
+* NEXTAUTH_URL
+* GITHUB_ID / GITHUB_SECRET
+* NEXT_PUBLIC_SITE_URL
