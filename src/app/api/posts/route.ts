@@ -5,19 +5,27 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { postInput } from "@/lib/validation";
 
+// 確保此 API 每次都打 DB（避免被預先快取）
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET() {
+  // 只列出已發佈文章；若你想讓作者看到自己的草稿，改成條件式或另外做 /me 草稿列表
   const posts = await prisma.post.findMany({
     where: { published: true },
     orderBy: { createdAt: "desc" },
-    include: { tags: { include: { tag: true } } }, // 可留可拿掉
+    include: {
+      author: { select: { id: true, name: true, image: true } }, // ✨ 補上 author，給 UI 使用
+      tags: { include: { tag: true } },
+    },
   });
+
+  // 務必回傳「純陣列」
   return NextResponse.json(posts);
 }
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
-
-  // 先取出 userId，再檢查
   const userId = session?.user?.id ?? null;
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
@@ -30,7 +38,7 @@ export async function POST(req: NextRequest) {
   const { title, content, published, tags = [] } = parsed.data;
   const normTags = [...new Set(tags.map((t) => t.trim()).filter(Boolean))];
 
-  const result = await prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx) => {
     const tagRecords = await Promise.all(
       normTags.map((name) =>
         tx.tag.upsert({
@@ -41,7 +49,7 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    const created = await tx.post.create({
+    return tx.post.create({
       data: {
         title,
         content,
@@ -55,11 +63,12 @@ export async function POST(req: NextRequest) {
             }
           : undefined,
       },
-      include: { tags: { include: { tag: true } } },
+      include: {
+        author: { select: { id: true, name: true, image: true } }, // ✨ 回傳時也帶 author
+        tags: { include: { tag: true } },
+      },
     });
-
-    return created;
   });
 
-  return NextResponse.json(result, { status: 201 });
+  return NextResponse.json(created, { status: 201 });
 }

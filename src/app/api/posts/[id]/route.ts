@@ -70,15 +70,35 @@ export async function DELETE(_: NextRequest, ctx: { params: ParamsPromise }) {
 
   const { id } = await ctx.params;
 
-  if (isAdmin(session)) {
-    await prisma.post.delete({ where: { id } });
+  try {
+    if (isAdmin(session)) {
+      await prisma.$transaction(async (tx) => {
+        await tx.postTag.deleteMany({ where: { postId: id } });
+        await tx.post.delete({ where: { id } });
+      });
+      return new NextResponse(null, { status: 204 });
+    }
+
+    // 非管理員：只能刪自己文章
+    const result = await prisma.$transaction(async (tx) => {
+      // 先確認這篇是自己的
+      const owned = await tx.post.findFirst({
+        where: { id, authorId: uid },
+        select: { id: true },
+      });
+      if (!owned) return { ok: false as const };
+
+      await tx.postTag.deleteMany({ where: { postId: id } });
+      const del = await tx.post.deleteMany({ where: { id, authorId: uid } });
+      return { ok: del.count > 0 } as const;
+    });
+
+    if (!result.ok) return new NextResponse("Forbidden", { status: 403 });
     return new NextResponse(null, { status: 204 });
+  } catch (e: any) {
+    // 讓前端看到實際錯誤字串，方便除錯
+    return new NextResponse(`Delete failed: ${e?.message ?? e}`, {
+      status: 500,
+    });
   }
-
-  const { count } = await prisma.post.deleteMany({
-    where: { id, authorId: uid },
-  });
-  if (count === 0) return new NextResponse("Forbidden", { status: 403 });
-
-  return new NextResponse(null, { status: 204 });
 }
